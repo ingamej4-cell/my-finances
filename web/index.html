@@ -7,7 +7,6 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* ... (все стили остаются без изменений, они скрыты для краткости) ... */
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0a0a0a; color: #ffffff; }
     .app { max-width: 480px; margin: 0 auto; padding: 20px 16px 40px; }
@@ -15,10 +14,12 @@
     .eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b9e7e; margin: 0 0 4px; font-weight: bold;}
     h1 { margin: 0; font-size: 24px; color: #fff; }
     .avatar { width: 44px; height: 44px; background: #1a2f24; color: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; border: 1px solid #2a4a3a; }
+
     .balance-card { background: linear-gradient(145deg, #11241b, #0d1a14); color: #fff; padding: 20px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #1f3b2d; }
     .balance-card .muted { color: #6b9e7e; margin: 0 0 8px; font-size: 14px; }
     .balance { font-size: 36px; font-weight: bold; margin-bottom: 16px; color: #fff; transition: color 0.3s; }
     .balance.negative { color: #ef4444; }
+
     .stats { display: flex; justify-content: space-between; border-top: 1px solid #1f3b2d; padding-top: 16px; }
     .stats div { display: flex; flex-direction: column; }
     .stats span { font-size: 12px; color: #6b9e7e; margin-bottom: 4px; }
@@ -85,8 +86,6 @@
     .recurring-info div { color: #6b9e7e; font-size: 12px; margin-top: 2px;}
     .recurring-amount { color: #ef4444; font-weight: bold; }
     .recurring-delete { background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 0 5px; }
-
-    /* НОВАЯ КНОПКА ОПЛАТИТЬ */
     .btn-pay { background: #1a2f24; color: #4ade80; border: 1px solid #4ade80; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; }
     .btn-pay:hover { background: #4ade80; color: #000; }
 
@@ -150,8 +149,12 @@
             <div style="flex: 1;">
                 <label for="inputCurrency" id="lbl_currency">Валюта</label>
                 <select id="inputCurrency">
-                    <option value="EUR">EUR</option><option value="USD">USD</option>
-                    <option value="UAH">UAH</option><option value="GBP">GBP</option><option value="PLN">PLN</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="UAH">UAH</option>
+                    <option value="GBP">GBP</option>
+                    <option value="PLN">PLN</option>
+                    <option value="RUB">RUB</option> <!-- ДОБАВИЛИ РУБЛИ -->
                 </select>
             </div>
         </div>
@@ -201,7 +204,14 @@
       <label for="language" id="lbl_lang">Язык интерфейса</label>
       <select id="language"><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="de">Deutsch</option></select>
       <label for="currency" id="lbl_main_curr">Основная валюта</label>
-      <select id="currency"><option value="EUR">EUR — евро</option><option value="USD">USD — доллар США</option><option value="UAH">UAH — гривна</option><option value="GBP">GBP — фунт</option><option value="PLN">PLN — злотый</option></select>
+      <select id="currency">
+        <option value="EUR">EUR — евро</option>
+        <option value="USD">USD — доллар США</option>
+        <option value="UAH">UAH — гривна</option>
+        <option value="GBP">GBP — фунт</option>
+        <option value="PLN">PLN — злотый</option>
+        <option value="RUB">RUB — рубль</option> <!-- ДОБАВИЛИ РУБЛИ -->
+      </select>
       <button id="saveSettings" class="secondary" type="button">Сохранить настройки</button>
     </section>
     <footer id="lbl_footer">Учебная версия · Данные хранятся локально в SQLite</footer>
@@ -225,6 +235,7 @@
       <h3 id="budgetModalTitle">Новый конверт</h3>
       <label for="budgetCategorySelect" id="lbl_budget_cat">Категория</label>
       <select id="budgetCategorySelect" style="margin-bottom: 10px; padding: 8px; border-radius: 6px; border: 1px solid #1f3b2d; background: #0a0a0a; color: #fff; width: 100%;"></select>
+
       <label>Иконка</label>
       <div class="emoji-picker" id="emojiPicker">
         <span class="emoji-option" data-emoji="🥦">🥦</span><span class="emoji-option" data-emoji="🏠">🏠</span>
@@ -232,6 +243,7 @@
         <span class="emoji-option" data-emoji="💊">💊</span><span class="emoji-option" data-emoji="🎉">🎉</span>
         <span class="emoji-option" data-emoji="💰">💰</span><span class="emoji-option" data-emoji="🐷">🐷</span>
       </div>
+
       <label>Цвет</label>
       <div class="color-picker" id="colorPicker">
         <div class="color-option" data-color="#22c55e" style="background:#22c55e;"></div>
@@ -241,8 +253,10 @@
         <div class="color-option" data-color="#8b5cf6" style="background:#8b5cf6;"></div>
         <div class="color-option" data-color="#ec4899" style="background:#ec4899;"></div>
       </div>
+
       <label for="budgetLimitInput" id="lbl_budget_limit">Сумма лимита</label>
       <input id="budgetLimitInput" type="number" min="0" step="0.01" placeholder="Сумма">
+
       <div class="modal-btn-row">
         <button id="saveBudgetBtn" class="modal-btn-save">Сохранить</button>
         <button id="cancelBudgetBtn" class="modal-btn-cancel">Отмена</button>
@@ -265,7 +279,6 @@
     </div>
   </div>
 
-  <!-- ОБНОВЛЕННАЯ МОДАЛКА РЕГУЛЯРНОГО ПЛАТЕЖА -->
   <div id="recurringModal" class="modal-bg">
     <div class="modal-box">
       <h3 id="lbl_rec_modal_title">Новый регулярный платеж</h3>
