@@ -37,30 +37,44 @@ def init_db():
             cursor.execute("CREATE TABLE IF NOT EXISTS recurring_payments (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_user_id INTEGER NOT NULL, title TEXT NOT NULL, amount REAL NOT NULL, day_of_month INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'Дом и счета')")
         db.commit()
 
+# ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ СОЗДАНИЯ БАЗОВЫХ КАТЕГОРИЙ
 def ensure_default_categories(user_id: int):
     default_expense = ['Продукты', 'Дом и счета', 'Транспорт', 'Одежда', 'Здоровье', 'Развлечения', 'Другое']
     default_income = ['Зарплата', 'Подарки', 'Другое']
+    
     with connect() as db:
         cursor = db.cursor()
-        # ИСПРАВЛЕНО: используем COUNT для проверки, а не INSERT OR IGNORE
-        query = "SELECT COUNT(*) FROM categories WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT COUNT(*) FROM categories WHERE telegram_user_id = ?"
-        cursor.execute(query, (user_id,))
-        count = cursor.fetchone()[0] if not DATABASE_URL else cursor.fetchone()['count']
         
+        # Правильная проверка для PostgreSQL и SQLite
+        if DATABASE_URL:
+            cursor.execute("SELECT COUNT(*) as count FROM categories WHERE telegram_user_id = %s", (user_id,))
+            count = cursor.fetchone()['count']
+        else:
+            cursor.execute("SELECT COUNT(*) FROM categories WHERE telegram_user_id = ?", (user_id,))
+            count = cursor.fetchone()[0]
+            
         if count == 0:
             for name in default_expense:
                 try:
-                    cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'expense')" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'expense')", (user_id, name))
+                    if DATABASE_URL:
+                        cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'expense')", (user_id, name))
+                    else:
+                        cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'expense')", (user_id, name))
                 except Exception:
-                    pass # Игнорируем, если уже есть
+                    pass 
+            
             for name in default_income:
                 try:
-                    cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'income')" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'income')", (user_id, name))
+                    if DATABASE_URL:
+                        cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'income')", (user_id, name))
+                    else:
+                        cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'income')", (user_id, name))
                 except Exception:
-                    pass
+                    pass 
+            
             db.commit()
 
-# --- ОСТАЛЬНЫЕ ФУНКЦИИ БЕЗ ИЗМЕНЕНИЙ (они уже были адаптированы) ---
+# --- ОСТАЛЬНЫЕ ФУНКЦИИ БЕЗ ИЗМЕНЕНИЙ ---
 def get_categories(user_id: int, kind: str):
     ensure_default_categories(user_id)
     with connect() as db:
