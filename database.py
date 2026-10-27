@@ -1,304 +1,152 @@
 import os
 import sqlite3
 from pathlib import Path
-from urllib.parse import urlparse
 
-# Проверяем, есть ли переменная окружения DATABASE_URL (Railway её добавляет)
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 
 def connect():
     if DATABASE_URL:
-        # Для Railway (PostgreSQL)
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        # Railway может выдавать ссылку с postgres://, а psycopg2 хочет postgresql://
         url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
         conn = psycopg2.connect(url)
         conn.cursor_factory = RealDictCursor
         return conn
     else:
-        # Для локальной разработки (SQLite)
         DB_PATH = Path(__file__).with_name("finance.db")
         connection = sqlite3.connect(DB_PATH)
         connection.row_factory = sqlite3.Row
         return connection
 
-
 def init_db():
     with connect() as db:
         cursor = db.cursor()
-
-        # SQL для PostgreSQL немного отличается (AUTOINCREMENT -> SERIAL)
         if DATABASE_URL:
-            # PostgreSQL версия
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id SERIAL PRIMARY KEY,
-                    telegram_user_id BIGINT NOT NULL,
-                    kind TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    category TEXT NOT NULL,
-                    note TEXT NOT NULL DEFAULT '',
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS settings (
-                    telegram_user_id BIGINT PRIMARY KEY,
-                    language TEXT NOT NULL DEFAULT 'ru',
-                    currency TEXT NOT NULL DEFAULT 'EUR'
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS budgets (
-                    telegram_user_id BIGINT NOT NULL,
-                    category TEXT NOT NULL,
-                    limit_amount REAL NOT NULL,
-                    emoji TEXT NOT NULL DEFAULT '💰',
-                    color TEXT NOT NULL DEFAULT '#22c55e',
-                    PRIMARY KEY (telegram_user_id, category)
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS goals (
-                    id SERIAL PRIMARY KEY,
-                    telegram_user_id BIGINT NOT NULL,
-                    title TEXT NOT NULL,
-                    target_amount REAL NOT NULL,
-                    saved_amount REAL NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS categories (
-                    id SERIAL PRIMARY KEY,
-                    telegram_user_id BIGINT NOT NULL,
-                    name TEXT NOT NULL,
-                    kind TEXT NOT NULL,
-                    UNIQUE(telegram_user_id, name, kind)
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS recurring_payments (
-                    id SERIAL PRIMARY KEY,
-                    telegram_user_id BIGINT NOT NULL,
-                    title TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    day_of_month INTEGER NOT NULL,
-                    category TEXT NOT NULL DEFAULT 'Дом и счета'
-                )
-            """)
+            cursor.execute("CREATE TABLE IF NOT EXISTS transactions (id SERIAL PRIMARY KEY, telegram_user_id BIGINT NOT NULL, kind TEXT NOT NULL, amount REAL NOT NULL, category TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS settings (telegram_user_id BIGINT PRIMARY KEY, language TEXT NOT NULL DEFAULT 'ru', currency TEXT NOT NULL DEFAULT 'EUR')")
+            cursor.execute("CREATE TABLE IF NOT EXISTS budgets (telegram_user_id BIGINT NOT NULL, category TEXT NOT NULL, limit_amount REAL NOT NULL, emoji TEXT NOT NULL DEFAULT '💰', color TEXT NOT NULL DEFAULT '#22c55e', PRIMARY KEY (telegram_user_id, category))")
+            cursor.execute("CREATE TABLE IF NOT EXISTS goals (id SERIAL PRIMARY KEY, telegram_user_id BIGINT NOT NULL, title TEXT NOT NULL, target_amount REAL NOT NULL, saved_amount REAL NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS categories (id SERIAL PRIMARY KEY, telegram_user_id BIGINT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, UNIQUE(telegram_user_id, name, kind))")
+            cursor.execute("CREATE TABLE IF NOT EXISTS recurring_payments (id SERIAL PRIMARY KEY, telegram_user_id BIGINT NOT NULL, title TEXT NOT NULL, amount REAL NOT NULL, day_of_month INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'Дом и счета')")
         else:
-            # SQLite версия (для локальной работы)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_user_id INTEGER NOT NULL,
-                    kind TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    category TEXT NOT NULL,
-                    note TEXT NOT NULL DEFAULT '',
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS settings (
-                    telegram_user_id INTEGER PRIMARY KEY,
-                    language TEXT NOT NULL DEFAULT 'ru',
-                    currency TEXT NOT NULL DEFAULT 'EUR'
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS budgets (
-                    telegram_user_id INTEGER NOT NULL,
-                    category TEXT NOT NULL,
-                    limit_amount REAL NOT NULL,
-                    emoji TEXT NOT NULL DEFAULT '💰',
-                    color TEXT NOT NULL DEFAULT '#22c55e',
-                    PRIMARY KEY (telegram_user_id, category)
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS goals (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_user_id INTEGER NOT NULL,
-                    title TEXT NOT NULL,
-                    target_amount REAL NOT NULL,
-                    saved_amount REAL NOT NULL DEFAULT 0,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_user_id INTEGER NOT NULL,
-                    name TEXT NOT NULL,
-                    kind TEXT NOT NULL,
-                    UNIQUE(telegram_user_id, name, kind)
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS recurring_payments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_user_id INTEGER NOT NULL,
-                    title TEXT NOT NULL,
-                    amount REAL NOT NULL,
-                    day_of_month INTEGER NOT NULL,
-                    category TEXT NOT NULL DEFAULT 'Дом и счета'
-                )
-            """)
+            cursor.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_user_id INTEGER NOT NULL, kind TEXT NOT NULL, amount REAL NOT NULL, category TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS settings (telegram_user_id INTEGER PRIMARY KEY, language TEXT NOT NULL DEFAULT 'ru', currency TEXT NOT NULL DEFAULT 'EUR')")
+            cursor.execute("CREATE TABLE IF NOT EXISTS budgets (telegram_user_id INTEGER NOT NULL, category TEXT NOT NULL, limit_amount REAL NOT NULL, emoji TEXT NOT NULL DEFAULT '💰', color TEXT NOT NULL DEFAULT '#22c55e', PRIMARY KEY (telegram_user_id, category))")
+            cursor.execute("CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_user_id INTEGER NOT NULL, title TEXT NOT NULL, target_amount REAL NOT NULL, saved_amount REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_user_id INTEGER NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, UNIQUE(telegram_user_id, name, kind))")
+            cursor.execute("CREATE TABLE IF NOT EXISTS recurring_payments (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_user_id INTEGER NOT NULL, title TEXT NOT NULL, amount REAL NOT NULL, day_of_month INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'Дом и счета')")
         db.commit()
-
-
-# --- Дальше идут функции, они почти не меняются, но нужно адаптировать под курсоры ---
-# (Вставь сюда все остальные функции из старого database.py: ensure_default_categories, get_categories, add_category, add_transaction и т.д.)
-# Они будут работать с обоими типами баз, так как мы используем одинаковые имена колонок.
 
 def ensure_default_categories(user_id: int):
     default_expense = ['Продукты', 'Дом и счета', 'Транспорт', 'Одежда', 'Здоровье', 'Развлечения', 'Другое']
     default_income = ['Зарплата', 'Подарки', 'Другое']
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) FROM categories WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT COUNT(*) FROM categories WHERE telegram_user_id = ?",
-            (user_id,))
-        count = cursor.fetchone()[0]
+        # ИСПРАВЛЕНО: используем COUNT для проверки, а не INSERT OR IGNORE
+        query = "SELECT COUNT(*) FROM categories WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT COUNT(*) FROM categories WHERE telegram_user_id = ?"
+        cursor.execute(query, (user_id,))
+        count = cursor.fetchone()[0] if not DATABASE_URL else cursor.fetchone()['count']
+        
         if count == 0:
             for name in default_expense:
-                cursor.execute(
-                    "INSERT OR IGNORE INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'expense')" if DATABASE_URL else "INSERT OR IGNORE INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'expense')",
-                    (user_id, name))
+                try:
+                    cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'expense')" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'expense')", (user_id, name))
+                except Exception:
+                    pass # Игнорируем, если уже есть
             for name in default_income:
-                cursor.execute(
-                    "INSERT OR IGNORE INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'income')" if DATABASE_URL else "INSERT OR IGNORE INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'income')",
-                    (user_id, name))
-        db.commit()
+                try:
+                    cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, 'income')" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, 'income')", (user_id, name))
+                except Exception:
+                    pass
+            db.commit()
 
-
+# --- ОСТАЛЬНЫЕ ФУНКЦИИ БЕЗ ИЗМЕНЕНИЙ (они уже были адаптированы) ---
 def get_categories(user_id: int, kind: str):
     ensure_default_categories(user_id)
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT id, name FROM categories WHERE telegram_user_id = %s AND kind = %s ORDER BY id" if DATABASE_URL else "SELECT id, name FROM categories WHERE telegram_user_id = ? AND kind = ? ORDER BY id",
-            (user_id, kind))
+        cursor.execute("SELECT id, name FROM categories WHERE telegram_user_id = %s AND kind = %s ORDER BY id" if DATABASE_URL else "SELECT id, name FROM categories WHERE telegram_user_id = ? AND kind = ? ORDER BY id", (user_id, kind))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-
 
 def add_category(user_id: int, name: str, kind: str):
     with connect() as db:
         cursor = db.cursor()
         try:
-            cursor.execute(
-                "INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, %s)" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, ?)",
-                (user_id, name.strip(), kind))
+            cursor.execute("INSERT INTO categories (telegram_user_id, name, kind) VALUES (%s, %s, %s)" if DATABASE_URL else "INSERT INTO categories (telegram_user_id, name, kind) VALUES (?, ?, ?)", (user_id, name.strip(), kind))
             db.commit()
             return True
         except Exception:
             db.rollback()
             return False
 
-
 def add_transaction(user_id: int, kind: str, amount: float, category: str, note: str = ""):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO transactions (telegram_user_id, kind, amount, category, note) VALUES (%s, %s, %s, %s, %s)" if DATABASE_URL else "INSERT INTO transactions (telegram_user_id, kind, amount, category, note) VALUES (?, ?, ?, ?, ?)",
-            (user_id, kind, amount, category, note))
+        cursor.execute("INSERT INTO transactions (telegram_user_id, kind, amount, category, note) VALUES (%s, %s, %s, %s, %s)" if DATABASE_URL else "INSERT INTO transactions (telegram_user_id, kind, amount, category, note) VALUES (?, ?, ?, ?, ?)", (user_id, kind, amount, category, note))
         db.commit()
-
 
 def delete_transaction(transaction_id: int, user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "DELETE FROM transactions WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM transactions WHERE id = ? AND telegram_user_id = ?",
-            (transaction_id, user_id))
+        cursor.execute("DELETE FROM transactions WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM transactions WHERE id = ? AND telegram_user_id = ?", (transaction_id, user_id))
         db.commit()
-
 
 def get_transactions(user_id: int, limit: int = 100):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT id, kind, amount, category, note, created_at FROM transactions WHERE telegram_user_id = %s ORDER BY id DESC LIMIT %s" if DATABASE_URL else "SELECT id, kind, amount, category, note, created_at FROM transactions WHERE telegram_user_id = ? ORDER BY id DESC LIMIT ?",
-            (user_id, limit))
+        cursor.execute("SELECT id, kind, amount, category, note, created_at FROM transactions WHERE telegram_user_id = %s ORDER BY id DESC LIMIT %s" if DATABASE_URL else "SELECT id, kind, amount, category, note, created_at FROM transactions WHERE telegram_user_id = ? ORDER BY id DESC LIMIT ?", (user_id, limit))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-
 
 def get_summary(user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount ELSE 0 END), 0) AS income, COALESCE(SUM(CASE WHEN kind='expense' THEN amount ELSE 0 END), 0) AS expenses FROM transactions WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount ELSE 0 END), 0) AS income, COALESCE(SUM(CASE WHEN kind='expense' THEN amount ELSE 0 END), 0) AS expenses FROM transactions WHERE telegram_user_id = ?",
-            (user_id,))
+        cursor.execute("SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount ELSE 0 END), 0) AS income, COALESCE(SUM(CASE WHEN kind='expense' THEN amount ELSE 0 END), 0) AS expenses FROM transactions WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT COALESCE(SUM(CASE WHEN kind='income' THEN amount ELSE 0 END), 0) AS income, COALESCE(SUM(CASE WHEN kind='expense' THEN amount ELSE 0 END), 0) AS expenses FROM transactions WHERE telegram_user_id = ?", (user_id,))
         row = cursor.fetchone()
-        income = float(row['income'] if DATABASE_URL else row['income'])
-        expenses = float(row['expenses'] if DATABASE_URL else row['expenses'])
+        income = float(row['income'])
+        expenses = float(row['expenses'])
         return {"income": income, "expenses": expenses, "balance": income - expenses}
-
 
 def get_expenses_by_category(user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT category, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE telegram_user_id = %s AND kind = 'expense' GROUP BY category ORDER BY total DESC" if DATABASE_URL else "SELECT category, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE telegram_user_id = ? AND kind = 'expense' GROUP BY category ORDER BY total DESC",
-            (user_id,))
+        cursor.execute("SELECT category, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE telegram_user_id = %s AND kind = 'expense' GROUP BY category ORDER BY total DESC" if DATABASE_URL else "SELECT category, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE telegram_user_id = ? AND kind = 'expense' GROUP BY category ORDER BY total DESC", (user_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-
 
 def save_settings(user_id: int, language: str, currency: str):
     with connect() as db:
         cursor = db.cursor()
         if DATABASE_URL:
-            cursor.execute(
-                "INSERT INTO settings (telegram_user_id, language, currency) VALUES (%s, %s, %s) ON CONFLICT (telegram_user_id) DO UPDATE SET language=EXCLUDED.language, currency=EXCLUDED.currency",
-                (user_id, language, currency))
+            cursor.execute("INSERT INTO settings (telegram_user_id, language, currency) VALUES (%s, %s, %s) ON CONFLICT (telegram_user_id) DO UPDATE SET language=EXCLUDED.language, currency=EXCLUDED.currency", (user_id, language, currency))
         else:
-            cursor.execute(
-                "INSERT INTO settings (telegram_user_id, language, currency) VALUES (?, ?, ?) ON CONFLICT(telegram_user_id) DO UPDATE SET language=excluded.language, currency=excluded.currency",
-                (user_id, language, currency))
+            cursor.execute("INSERT INTO settings (telegram_user_id, language, currency) VALUES (?, ?, ?) ON CONFLICT(telegram_user_id) DO UPDATE SET language=excluded.language, currency=excluded.currency", (user_id, language, currency))
         db.commit()
-
 
 def get_settings(user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT language, currency FROM settings WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT language, currency FROM settings WHERE telegram_user_id = ?",
-            (user_id,))
+        cursor.execute("SELECT language, currency FROM settings WHERE telegram_user_id = %s" if DATABASE_URL else "SELECT language, currency FROM settings WHERE telegram_user_id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
         return {"language": "ru", "currency": "EUR"}
 
-
 def set_budget(user_id: int, category: str, limit_amount: float, emoji: str = '💰', color: str = '#22c55e'):
     with connect() as db:
         cursor = db.cursor()
         if DATABASE_URL:
-            cursor.execute(
-                "INSERT INTO budgets (telegram_user_id, category, limit_amount, emoji, color) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (telegram_user_id, category) DO UPDATE SET limit_amount=EXCLUDED.limit_amount, emoji=EXCLUDED.emoji, color=EXCLUDED.color",
-                (user_id, category, limit_amount, emoji, color))
+            cursor.execute("INSERT INTO budgets (telegram_user_id, category, limit_amount, emoji, color) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (telegram_user_id, category) DO UPDATE SET limit_amount=EXCLUDED.limit_amount, emoji=EXCLUDED.emoji, color=EXCLUDED.color", (user_id, category, limit_amount, emoji, color))
         else:
-            cursor.execute(
-                "INSERT INTO budgets (telegram_user_id, category, limit_amount, emoji, color) VALUES (?, ?, ?, ?, ?) ON CONFLICT(telegram_user_id, category) DO UPDATE SET limit_amount=excluded.limit_amount, emoji=excluded.emoji, color=excluded.color",
-                (user_id, category, limit_amount, emoji, color))
+            cursor.execute("INSERT INTO budgets (telegram_user_id, category, limit_amount, emoji, color) VALUES (?, ?, ?, ?, ?) ON CONFLICT(telegram_user_id, category) DO UPDATE SET limit_amount=excluded.limit_amount, emoji=excluded.emoji, color=excluded.color", (user_id, category, limit_amount, emoji, color))
         db.commit()
-
 
 def delete_budget(user_id: int, category: str):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "DELETE FROM budgets WHERE telegram_user_id = %s AND category = %s" if DATABASE_URL else "DELETE FROM budgets WHERE telegram_user_id = ? AND category = ?",
-            (user_id, category))
+        cursor.execute("DELETE FROM budgets WHERE telegram_user_id = %s AND category = %s" if DATABASE_URL else "DELETE FROM budgets WHERE telegram_user_id = ? AND category = ?", (user_id, category))
         db.commit()
-
 
 def get_budgets(user_id: int):
     with connect() as db:
@@ -322,98 +170,68 @@ def get_budgets(user_id: int):
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
-
 def add_goal(user_id: int, title: str, target_amount: float):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO goals (telegram_user_id, title, target_amount) VALUES (%s, %s, %s)" if DATABASE_URL else "INSERT INTO goals (telegram_user_id, title, target_amount) VALUES (?, ?, ?)",
-            (user_id, title, target_amount))
+        cursor.execute("INSERT INTO goals (telegram_user_id, title, target_amount) VALUES (%s, %s, %s)" if DATABASE_URL else "INSERT INTO goals (telegram_user_id, title, target_amount) VALUES (?, ?, ?)", (user_id, title, target_amount))
         db.commit()
-
 
 def update_goal(goal_id: int, user_id: int, title: str, target_amount: float):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "UPDATE goals SET title = %s, target_amount = %s WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "UPDATE goals SET title = ?, target_amount = ? WHERE id = ? AND telegram_user_id = ?",
-            (title, target_amount, goal_id, user_id))
+        cursor.execute("UPDATE goals SET title = %s, target_amount = %s WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "UPDATE goals SET title = ?, target_amount = ? WHERE id = ? AND telegram_user_id = ?", (title, target_amount, goal_id, user_id))
         db.commit()
-
 
 def get_goals(user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT * FROM goals WHERE telegram_user_id = %s ORDER BY id DESC" if DATABASE_URL else "SELECT * FROM goals WHERE telegram_user_id = ? ORDER BY id DESC",
-            (user_id,))
+        cursor.execute("SELECT * FROM goals WHERE telegram_user_id = %s ORDER BY id DESC" if DATABASE_URL else "SELECT * FROM goals WHERE telegram_user_id = ? ORDER BY id DESC", (user_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-
 
 def update_goal_amount(goal_id: int, user_id: int, amount: float):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT title FROM goals WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "SELECT title FROM goals WHERE id = ? AND telegram_user_id = ?",
-            (goal_id, user_id))
+        cursor.execute("SELECT title FROM goals WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "SELECT title FROM goals WHERE id = ? AND telegram_user_id = ?", (goal_id, user_id))
         goal = cursor.fetchone()
     if goal:
         with connect() as db:
             cursor = db.cursor()
-            cursor.execute(
-                "UPDATE goals SET saved_amount = saved_amount + %s WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "UPDATE goals SET saved_amount = saved_amount + ? WHERE id = ? AND telegram_user_id = ?",
-                (amount, goal_id, user_id))
+            cursor.execute("UPDATE goals SET saved_amount = saved_amount + %s WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "UPDATE goals SET saved_amount = saved_amount + ? WHERE id = ? AND telegram_user_id = ?", (amount, goal_id, user_id))
             db.commit()
         add_transaction(user_id, "expense", amount, "Накопления", f"Цель: {goal['title']}")
-
 
 def delete_goal(goal_id: int, user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "DELETE FROM goals WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM goals WHERE id = ? AND telegram_user_id = ?",
-            (goal_id, user_id))
+        cursor.execute("DELETE FROM goals WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM goals WHERE id = ? AND telegram_user_id = ?", (goal_id, user_id))
         db.commit()
-
 
 def add_recurring(user_id: int, title: str, amount: float, day_of_month: int, category: str):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO recurring_payments (telegram_user_id, title, amount, day_of_month, category) VALUES (%s, %s, %s, %s, %s)" if DATABASE_URL else "INSERT INTO recurring_payments (telegram_user_id, title, amount, day_of_month, category) VALUES (?, ?, ?, ?, ?)",
-            (user_id, title, amount, day_of_month, category))
+        cursor.execute("INSERT INTO recurring_payments (telegram_user_id, title, amount, day_of_month, category) VALUES (%s, %s, %s, %s, %s)" if DATABASE_URL else "INSERT INTO recurring_payments (telegram_user_id, title, amount, day_of_month, category) VALUES (?, ?, ?, ?, ?)", (user_id, title, amount, day_of_month, category))
         db.commit()
-
 
 def get_recurring(user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT * FROM recurring_payments WHERE telegram_user_id = %s ORDER BY day_of_month" if DATABASE_URL else "SELECT * FROM recurring_payments WHERE telegram_user_id = ? ORDER BY day_of_month",
-            (user_id,))
+        cursor.execute("SELECT * FROM recurring_payments WHERE telegram_user_id = %s ORDER BY day_of_month" if DATABASE_URL else "SELECT * FROM recurring_payments WHERE telegram_user_id = ? ORDER BY day_of_month", (user_id,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-
 
 def delete_recurring(payment_id: int, user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "DELETE FROM recurring_payments WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM recurring_payments WHERE id = ? AND telegram_user_id = ?",
-            (payment_id, user_id))
+        cursor.execute("DELETE FROM recurring_payments WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "DELETE FROM recurring_payments WHERE id = ? AND telegram_user_id = ?", (payment_id, user_id))
         db.commit()
-
 
 def pay_recurring(payment_id: int, user_id: int):
     with connect() as db:
         cursor = db.cursor()
-        cursor.execute(
-            "SELECT title, amount, category FROM recurring_payments WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "SELECT title, amount, category FROM recurring_payments WHERE id = ? AND telegram_user_id = ?",
-            (payment_id, user_id))
+        cursor.execute("SELECT title, amount, category FROM recurring_payments WHERE id = %s AND telegram_user_id = %s" if DATABASE_URL else "SELECT title, amount, category FROM recurring_payments WHERE id = ? AND telegram_user_id = ?", (payment_id, user_id))
         payment = cursor.fetchone()
     if payment:
-        add_transaction(user_id, "expense", payment['amount'], payment['category'],
-                        f"Регулярный платеж: {payment['title']}")
+        add_transaction(user_id, "expense", payment['amount'], payment['category'], f"Регулярный платеж: {payment['title']}")
         return True
     return False
